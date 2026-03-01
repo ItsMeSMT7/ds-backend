@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  phone     String
+  password  String
+  role      Int      @default(1)
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sentMessages     Chat[] @relation("SentMessages")
+  receivedMessages Chat[] @relation("ReceivedMessages")
+  bookmarks        Bookmark[]
+
+  @@map("users")
+}
+
+model Property {
+  id          Int      @id @default(autoincrement())
+  name        String
+  type        String
+  category    String
+  description String
+  price       Float
+  address     String
+  latitude    Float?
+  longitude   Float?
+  status      String   @default("available")
+  views       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  media     PropertyMedia[]
+  bookmarks Bookmark[]
+
+  @@map("properties")
+}
+
+model PropertyMedia {
+  id         Int      @id @default(autoincrement())
+  propertyId Int      @map("property_id")
+  mediaUrl   String   @map("media_url")
+  mediaType  String   @default("image") @map("media_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_media")
+}
+
+model Chat {
+  id         Int      @id @default(autoincrement())
+  senderId   Int      @map("sender_id")
+  receiverId Int      @map("receiver_id")
+  message    String
+  isRead     Boolean  @default(false) @map("is_read")
+  timestamp  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id])
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id])
+
+  @@map("chats")
+}
+
+model Bookmark {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  propertyId Int      @map("property_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, propertyId])
+  @@map("bookmarks")
+}
