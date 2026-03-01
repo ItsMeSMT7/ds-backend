@@ -21,10 +21,19 @@ const { initializeSocket } = require('./src/socket/socket');
 const app = express();
 const server = http.createServer(app);
 
+/* ============================
+   ✅ CORS FIX (IMPORTANT)
+============================ */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://ds-frontend-opal.vercel.app"
+];
+
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -35,10 +44,19 @@ initializeSocket(io);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
@@ -60,12 +78,6 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({
-      success: false,
-      message: `Upload error: ${err.message}`
-    });
-  }
   res.status(500).json({
     success: false,
     message: 'Internal server error.'
